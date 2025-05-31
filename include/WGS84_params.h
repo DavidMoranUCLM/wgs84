@@ -1,0 +1,6 @@
+
+#define WGS84_MAJOR_SEMI_AXIS_M 6378137
+#define WGS84_MINOR_SEMI_AXIS_M 6356752
+#define WGS84_FLATTENING (1.f/298.257223563f)
+#define WGS84_ANG_VEL_RAD_S (7.292115e-5f)
+#define WGS84_UERE 5.f // User Equivalent Range Error in meters
