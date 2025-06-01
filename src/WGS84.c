@@ -102,6 +102,8 @@ WGS84_err_t set_dec_coor(float lon, float lat, wgs84_coordinates_t *coor) {
 
   coor->lon.dec = fabs(lon);
   coor->lon.dir = lat > 0 ? WGS84_EAST : WGS84_WEST;
+
+  return WGS84_ERR_OK;
 }
 
 /**
@@ -167,8 +169,8 @@ WGS84_err_t wgs84_from_string(const char *nmea, wgs84_coordinates_t *coor) {
   if (checksum == NULL) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
-  const char *vdop = checksum - 3;
-  const char *hdop = vdop - 4;
+  const char *vdop = checksum - 4;
+  const char *hdop = vdop - 5;
 
   if (sscanf(hdop, "%f", &coor->variance[0]) != 1) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
@@ -197,7 +199,7 @@ WGS84_err_t wgs84_ENU_delta_update(wgs84_coordinates_t *coor, float dx,
   float lon = coor->lon.dir == WGS84_EAST ? coor->lon.dec
                                           : -coor->lon.dec;  // lon [-180,180]
 
-  phi_rad = lat * M_PIf / 180.f;  // convert to radians
+  phi_rad = lat * M_PI / 180.f;  // convert to radians
   float c_phi = cosf(phi_rad);
   float s_phi = sinf(phi_rad);
   float c_phi_2 = c_phi * c_phi;
@@ -211,13 +213,14 @@ WGS84_err_t wgs84_ENU_delta_update(wgs84_coordinates_t *coor, float dx,
   d_lat = 1.57842e-7f * dx * powf(v1, 1.5f);
   d_h = dz;
 
-  lat += d_lat * 180.f / M_PIf;  // convert to degrees
-  lon += d_lon * 180.f / M_PIf;  // convert to degrees
+  lat += d_lat * 180.f / M_PI;  // convert to degrees
+  lon += d_lon * 180.f / M_PI;  // convert to degrees
   coor->height_AMSL += d_h;
 
   set_dec_coor(lon, lat, coor);
 
   CHECK_WGS84_ERR(decimal2degree(coor));
+  return WGS84_ERR_OK;
 }
 
 /** jac_delta
@@ -248,7 +251,7 @@ WGS84_err_t wgs84_ENU_delta_update_jac(wgs84_coordinates_t *coor, float dx,
   float lon = coor->lon.dir == WGS84_EAST ? coor->lon.dec
                                           : -coor->lon.dec;  // lon [-180,180]
 
-  float phi_rad = lat * M_PIf / 180.f;  // convert to radians
+  float phi_rad = lat * M_PI / 180.f;  // convert to radians
   float s_phi = sinf(phi_rad);
   float c_phi = cosf(phi_rad);
   float s_phi_2 = s_phi * s_phi;
