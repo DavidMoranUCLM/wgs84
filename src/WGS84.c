@@ -125,7 +125,9 @@ WGS84_err_t wgs84_from_string(const char *nmea, wgs84_coordinates_t *coor) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
 
-  if (sscanf(gga, "$GPGGA,%*f,%2u%f,%c,%3u%f,%c,%*d,%*d,%*f,%f", &lat_deg, &lat_min, &lat_dir, &lon_deg, &lon_min, &lon_dir, &coor->height_AMSL) != 7) {
+  if (sscanf(gga, "$GPGGA,%*f,%2u%f,%c,%3u%f,%c,%*d,%*d,%*f,%f", &lat_deg,
+             &lat_min, &lat_dir, &lon_deg, &lon_min, &lon_dir,
+             &coor->height_AMSL) != 7) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
 
@@ -148,8 +150,7 @@ WGS84_err_t wgs84_from_string(const char *nmea, wgs84_coordinates_t *coor) {
   float pdop;
   int fix_mode;
   // GPGSA: $GPGSA,<mode1>,<fix_mode>,<sat1>,...,<sat12>,<pdop>,<hdop>,<vdop>*hh
-  if (sscanf(gsa, "$GPGSA,%*c,%d,%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%f,%f,%f",
-             &fix_mode, &pdop, &coor->variance[0], &coor->variance[2]) != 4) {
+  if (sscanf(shift_n_commas(gsa,16), "%f,%f", &coor->variance[0], &coor->variance[2]) != 2) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
   coor->variance[1] = coor->variance[0];  // GPGSA does not provide separate
