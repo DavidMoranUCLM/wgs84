@@ -116,73 +116,47 @@ WGS84_err_t wgs84_from_string(const char *nmea, wgs84_coordinates_t *coor) {
   CHECK_ARGS(coor);
   CHECK_ARGS(nmea);
 
-  unsigned int d;
-  float m;
-  char l;
+  unsigned int lon_deg, lat_deg;
+  float lon_min, lat_min;
+  char lat_dir, lon_dir;
 
   const char *gga = strstr(nmea, "$GPGGA");
   if (gga == NULL) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
-  const char *lat =
-      gga + 17;  // GPGGA format: $GPGGA,hhmmss.ss,lat,NS,lon,EW,...
-  const char *lat_dir =
-      lat + 11;  // GPGGA format: $GPGGA,hhmmss.ss,lat,NS,lon,EW,...
-  CHECK_WGS84_ERR(get_lat_label_from_char(*lat_dir, coor));
 
-  const char *lon =
-      lat_dir + 2;  // GPGGA format: $GPGGA,hhmmss.ss,lat,NS,lon,EW,...
-  const char *lon_dir =
-      lon + 12;  // GPGGA format: $GPGGA,hhmmss.ss,lat,NS,lon,EW,...
-  CHECK_WGS84_ERR(get_lon_label_from_char(*lon_dir, coor));
-
-  if (sscanf(lat, "%2u%f", &d, &m) == 2) {
-    coor->lat.deg = d;
-    coor->lat.min = m;
-  } else {
+  if (sscanf(gga, "$GPGGA,%*f,%2u%f,%c,%3u%f,%c,%*d,%*d,%*f,%f", &lat_deg, &lat_min, &lat_dir, &lon_deg, &lon_min, &lon_dir, &coor->height_AMSL) != 7) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
 
-  if (sscanf(lon, "%3u%f", &d, &m) == 2) {
-    coor->lon.deg = d;
-    coor->lon.min = m;
-  } else {
-    return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
-  }
+  CHECK_WGS84_ERR(get_lat_label_from_char(lat_dir, coor));
+  CHECK_WGS84_ERR(get_lon_label_from_char(lon_dir, coor));
+
+    coor->lat.deg = lat_deg;
+    coor->lat.min = lat_min;
+
+    coor->lon.deg = lon_deg;
+    coor->lon.min = lon_min;
 
   CHECK_WGS84_ERR(degree2decimal(coor));
-
-  const char *height =
-      shift_n_commas(lon_dir, 4);  // GPGGA format: $GPGGA,...,height,...
-  if (height == NULL) {
-    return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
-  }
-  if (sscanf(height, "%f", &coor->height_AMSL) != 1) {
-    return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
-  }
 
   const char *gsa = strstr(nmea, "$GPGSA");
   if (gsa == NULL) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
-  const char *checksum = strchr(gsa, '*');
-  if (checksum == NULL) {
-    return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
-  }
-  const char *vdop = checksum - 4;
-  const char *hdop = vdop - 5;
 
-  if (sscanf(hdop, "%f", &coor->variance[0]) != 1) {
+  float pdop;
+  int fix_mode;
+  // GPGSA: $GPGSA,<mode1>,<fix_mode>,<sat1>,...,<sat12>,<pdop>,<hdop>,<vdop>*hh
+  if (sscanf(gsa, "$GPGSA,%*c,%d,%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%*[^,],%f,%f,%f",
+             &fix_mode, &pdop, &coor->variance[0], &coor->variance[2]) != 4) {
     return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
   }
   coor->variance[1] = coor->variance[0];  // GPGSA does not provide separate
-  if (sscanf(vdop, "%f", &coor->variance[2]) != 1) {
-    return WGS84_ERR_INCORRECT_NMEA_SENTENCE;
-  }
 
-  coor->variance[0] *= WGS84_UERE;
-  coor->variance[1] *= WGS84_UERE;
-  coor->variance[2] *= WGS84_UERE;
+  coor->variance[0] *= coor->variance[0]*WGS84_UERE;
+  coor->variance[1] *= coor->variance[1]*WGS84_UERE;
+  coor->variance[2] *= coor->variance[2]*WGS84_UERE;
 
   return WGS84_ERR_OK;
 }
